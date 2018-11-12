@@ -59,9 +59,11 @@ export default {
     window.addEventListener('resize', this.onResizeThrottle);
 
     babylon.init(this.$refs.renderCanvas);
+    babylon.on('beforeRender', () => {
+      pointerEffect.update();
+    });
     babylon.on('afterRender', () => {
       this.fps = babylon.engine.getFps();
-      pointerEffect.updateDebugCanvas();
     });
 
     pointerEffect.init(

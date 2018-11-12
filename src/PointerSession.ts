@@ -46,6 +46,6 @@ export default class PointerSession {
       );
     }
 
-    console.log(inputPoint, this.traveledDistance);
+    // console.log(inputPoint, this.traveledDistance);
   }
 }
