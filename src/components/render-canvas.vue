@@ -1,7 +1,8 @@
 <template>
   <div class="canvas-wrapper">
-    <canvas :width="width" :height="height" ref="renderCanvas"></canvas>
-    <div class="fps">FPS: {{Math.round(fps)}}</div>
+    <canvas ref="renderCanvas"></canvas>
+    <canvas id="debugCanvas" :width="width" :height="height" ref="debugCanvas"></canvas>
+    <div class="fps">{{Math.round(fps)}} FPS</div>
   </div>
 </template>
 
@@ -13,13 +14,21 @@
     left: 0;
     top: 0;
   }
+
+  > #debugCanvas {
+    position: absolute;
+    left: 0;
+    top: 0;
+    pointer-events: none;
+  }
 }
 </style>
 
 
 <script>
 import { throttle } from 'lodash';
-import babylon from '../Babylon';
+import babylon from '@/Babylon';
+import pointerEffect from '@/PointerEffect';
 
 export default {
   data() {
@@ -34,7 +43,16 @@ export default {
       this.resize();
     }, 300),
     resize() {
-      babylon.setSize(this.$root.$el.clientWidth, this.$root.$el.clientHeight);
+      this.width = this.$root.$el.clientWidth;
+      this.height = this.$root.$el.clientHeight;
+      babylon.setSize(this.width, this.height);
+    },
+    onCanvasKeyup(e) {
+      switch (e.key) {
+        case 'd': {
+          babylon.toggleInspector();
+        }
+      }
     }
   },
   mounted() {
@@ -43,7 +61,16 @@ export default {
     babylon.init(this.$refs.renderCanvas);
     babylon.on('afterRender', () => {
       this.fps = babylon.engine.getFps();
+      pointerEffect.updateDebugCanvas();
     });
+
+    pointerEffect.init(
+      this.$refs.renderCanvas,
+      this.$refs.debugCanvas,
+      babylon
+    );
+
+    this.$refs.renderCanvas.addEventListener('keyup', this.onCanvasKeyup);
 
     this.resize();
   },
