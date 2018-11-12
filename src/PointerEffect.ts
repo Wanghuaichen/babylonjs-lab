@@ -100,6 +100,7 @@ class PointerEffect {
     }
 
     line = BABYLON.Mesh.CreateLines('debugLine', points, scene);
+    line.color = new BABYLON.Color3(0.5, 0.5, 0.5);
 
     this.updateDebugCanvas();
   }
