@@ -9,10 +9,18 @@ export default class PointerSession {
   //   }
   // }
 
+  public static getDistance(x1: number, y1: number, x2: number, y2: number) {
+    return Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2));
+  }
+
   public isEnded: boolean = false;
   public inputData: HammerInput[] = [];
   public traveledDistance = 0;
-  public isClick: boolean = true;
+  public lastDistance = 0;
+
+  public get currentInputPoint() {
+    return this._currentInputPoint;
+  }
 
   private _lastInputPoint: HammerInput | null = null;
   private _currentInputPoint: HammerInput | null = null;
@@ -37,13 +45,15 @@ export default class PointerSession {
     }
 
     if (this._currentInputPoint && this._lastInputPoint) {
-      const pCurrent = this._currentInputPoint
-        .changedPointers[0] as PointerEvent;
-      const pLast = this._lastInputPoint.changedPointers[0] as PointerEvent;
-      this.traveledDistance += Math.sqrt(
-        Math.pow(pCurrent.clientX - pLast.clientX, 2) +
-          Math.pow(pCurrent.clientY - pLast.clientY, 2)
+      const pCurrent = this._currentInputPoint.center;
+      const pLast = this._lastInputPoint.center;
+      this.lastDistance = PointerSession.getDistance(
+        pCurrent.x,
+        pCurrent.y,
+        pLast.x,
+        pLast.y
       );
+      this.traveledDistance += this.lastDistance;
     }
 
     // console.log(inputPoint, this.traveledDistance);
