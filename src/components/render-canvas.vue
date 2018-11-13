@@ -9,7 +9,7 @@
 <style lang="scss">
 .canvas-wrapper {
   > .fps {
-    color: white;
+    color: black;
     position: absolute;
     left: 0;
     top: 0;
