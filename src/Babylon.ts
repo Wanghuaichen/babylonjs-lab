@@ -1,4 +1,5 @@
 import 'babylonjs-inspector';
+import 'babylonjs-materials';
 
 export class BabylonController {
   private _events: { [name: string]: any } = {};
