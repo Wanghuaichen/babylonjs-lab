@@ -12,9 +12,9 @@ const defaultHammerRecognizerNames = [
 ];
 
 const MIN_SWIPE_THRESHOLD = 10;
-const MIN_SWIPE_SEG = 50;
+const MIN_SWIPE_SEG = 40;
 const INIT_SWIPE_WIDTH = 30;
-const SWIPE_SHRINK = 0.004;
+const SWIPE_SHRINK = 0.005;
 
 class PointerEffect {
   private _hammer: HammerManager | null = null;
@@ -293,11 +293,11 @@ class PointerEffect {
       }
     }
 
-    this.updateDebugCanvas();
-
     vertexData.positions = positions;
     vertexData.indices = indices;
     vertexData.applyToMesh(this._mesh);
+
+    this.updateDebugCanvas();
     // console.log(positions, indices);
   }
 
