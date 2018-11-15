@@ -13,8 +13,12 @@ const defaultHammerRecognizerNames = [
 
 const MIN_SWIPE_THRESHOLD = 10;
 const MIN_SWIPE_SEG = 40;
+// const MIN_SWIPE_SEG = 100;
 const INIT_SWIPE_WIDTH = 30;
+// const INIT_SWIPE_WIDTH = 90;
 const SWIPE_SHRINK = 0.005;
+// const SWIPE_SHRINK = 0.00001;
+// const SWIPE_SHRINK = 0.0005;
 
 class PointerEffect {
   private _hammer: HammerManager | null = null;
@@ -29,7 +33,7 @@ class PointerEffect {
   private _clickCenter: BABYLON.Vector2 | null = null;
   private _line: BABYLON.LinesMesh | null = null;
   private _mesh: BABYLON.Mesh | null = null;
-  private _material: BABYLON.SimpleMaterial | null = null;
+  private _material: BABYLON.StandardMaterial | null = null;
   private _filteredPoints: any[] = [];
   private _tailIndex = 0;
   private _headIndex = 0;
@@ -77,8 +81,15 @@ class PointerEffect {
       this._isDirty = true;
     });
 
-    this._material = new BABYLON.SimpleMaterial('simple-material', this._babylon
-      .scene as BABYLON.Scene);
+    this._material = new BABYLON.StandardMaterial('simple-material', this
+      ._babylon.scene as BABYLON.Scene);
+    // this._material.diffuseColor = new BABYLON.Color3(1, 0, 0);
+    this._material.diffuseTexture = new BABYLON.Texture(
+      require('@/assets/uv-test-3.png'),
+      this._babylon.scene as BABYLON.Scene
+    );
+    this._material.backFaceCulling = true;
+    // this._material.wireframe = true;
   }
 
   public update() {
@@ -142,10 +153,13 @@ class PointerEffect {
     }
     this._mesh = new BABYLON.Mesh('swipe', scene);
     this._mesh.material = this._material;
+    this._mesh.renderingGroupId = 2;
+    this._mesh.visibility = 0.9999;
 
-    const vertexData = new BABYLON.VertexData();
     const positions: number[] = [];
     const indices: number[] = [];
+    const uvs: number[] = [];
+    const normals: number[] = [];
 
     /* for (let i = 0; i < this._filteredPoints.length; i++) {
       const point = this._filteredPoints[i];
@@ -215,21 +229,25 @@ class PointerEffect {
 
         if (index === this._tailIndex) {
           // end point
-          // 0 ----> 1
-          // point 0
+          // 0/1 ----> 2
+          // point 0 & point 1
           let px = point.x;
           let py = point.y;
           point.meshPoints.push(px, py, 0);
           let v = this.transformToCamera(px, py, cmInverse);
-          positions.push(v.x, v.y, 0);
+          positions.push(v.x, v.y, 0); // 0
+          positions.push(v.x, v.y, 0); // 1
 
-          // point 1
+          // point 2
           const nextPoint = this._filteredPoints[index + 1];
           px = nextPoint.x;
           py = nextPoint.y;
           point.meshPoints.push(px, py, 0);
           v = this.transformToCamera(px, py, cmInverse);
           positions.push(v.x, v.y, 0);
+
+          // Tail points uv
+          uvs.push(/* 0 */ 1, 1, /* 1 */ 1, 0, /* 2 */ 0, 0.5);
         } else if (index > this._tailIndex) {
           // middle point
           /**
@@ -245,39 +263,133 @@ class PointerEffect {
           let px = point.x + (normal.x * (INIT_SWIPE_WIDTH * point.life)) / 2;
           let py = point.y + (normal.y * (INIT_SWIPE_WIDTH * point.life)) / 2;
           point.meshPoints.push(px, py, 0);
-          let v = this.transformToCamera(px, py, cmInverse);
-          positions.push(v.x, v.y, 0);
+          const v1 = this.transformToCamera(px, py, cmInverse);
+          positions.push(v1.x, v1.y, 0);
 
           // point x+1
           px = point.x - (normal.x * (INIT_SWIPE_WIDTH * point.life)) / 2;
           py = point.y - (normal.y * (INIT_SWIPE_WIDTH * point.life)) / 2;
           point.meshPoints.push(px, py, 0);
-          v = this.transformToCamera(px, py, cmInverse);
-          positions.push(v.x, v.y, 0);
+          const v2 = this.transformToCamera(px, py, cmInverse);
+          positions.push(v2.x, v2.y, 0);
+
+          const i = index - this._tailIndex;
+
+          // Mid points uv
+          if (i % 2 !== 0) {
+            uvs.push(0, 1, 0, 0);
+          } else {
+            uvs.push(1, 1, 1, 0);
+          }
 
           if (index === this._tailIndex + 1) {
             // For tail
             indices.push(
               // Triangle upper
               0,
+              3,
+              2,
+              // middle dummy
+              0,
               2,
               1,
               // Triangle lower
-              0,
               1,
-              3
+              2,
+              4
             );
           } else {
-            const i = index - this._tailIndex;
             indices.push(
               // Triangle 1
-              i * 2 - 2,
-              i * 2,
               i * 2 - 1,
+              i * 2 + 1,
+              i * 2,
               // Triangle 2
-              i * 2 - 1,
               i * 2,
-              i * 2 + 1
+              i * 2 + 1,
+              i * 2 + 2
+            );
+          }
+
+          // Add head
+          if (index === this._filteredPoints.length - 1) {
+            const pointV = new BABYLON.Vector2(-normal.y, normal.x);
+
+            // Prevent artifacts
+            // if (!point.isDetermined) {
+            //   const lastDeterminedPoint = this._filteredPoints[index - 1];
+
+            //   if (
+            //     lastDeterminedPoint &&
+            //     lastDeterminedPoint.normal.length() > 0
+            //   ) {
+            //     const lastPointV = new BABYLON.Vector2(
+            //       -lastDeterminedPoint.normal.y,
+            //       lastDeterminedPoint.normal.x
+            //     );
+            //     // const MIN_SWIPE_SEG
+            //     const headTraveledProgress =
+            //       (point.traveledDistance -
+            //         lastDeterminedPoint.traveledDistance) /
+            //       MIN_SWIPE_SEG;
+
+            //     // console.log(headTraveledProgress);
+
+            //     pointV = new BABYLON.Vector2(
+            //       lastPointV.x * (1 - headTraveledProgress) +
+            //         pointV.x * headTraveledProgress,
+            //       lastPointV.y * (1 - headTraveledProgress) +
+            //         pointV.y * headTraveledProgress
+            //     );
+
+            //     if (headTraveledProgress <= 1e-5) {
+            //       console.log('error', pointV, lastPointV, pointV.length());
+            //     }
+            //   }
+            // }
+
+            const vh1 = this.transformToCamera(
+              point.x +
+                ((pointV.x * (INIT_SWIPE_WIDTH * point.life)) / 2) * 2.5,
+              point.y +
+                ((pointV.y * (INIT_SWIPE_WIDTH * point.life)) / 2) * 2.5,
+              cmInverse
+            );
+            // const vh2 = this.transformToCamera(
+            //   point.x - (pointV.x * (INIT_SWIPE_WIDTH * point.life)) / 2,
+            //   point.y - (pointV.y * (INIT_SWIPE_WIDTH * point.life)) / 2,
+            //   cmInverse
+            // );
+
+            // middle point
+            positions.push((v1.x + v2.x) / 2, (v1.y + v2.y) / 2, 0);
+
+            // upper head
+            positions.push(vh1.x, vh1.y, 0);
+
+            // lower head
+            positions.push(vh1.x, vh1.y, 0);
+
+            if (i % 2 !== 0) {
+              uvs.push(0, 0.5, 1, 1, 1, 0);
+            } else {
+              uvs.push(0, 0.5, 0, 1, 0, 0);
+            }
+            // vs.push(0, 0, 0, 0, 0, 0);
+
+            indices.push(
+              // Upper triangle
+              i * 2 + 3,
+              i * 2 + 1,
+              i * 2 + 4,
+              // middle dummy
+              i * 2 + 3,
+              i * 2 + 4,
+              i * 2 + 5,
+              // lower triangle
+              i * 2 + 3,
+              i * 2 + 5,
+              i * 2 + 2
             );
           }
         }
@@ -293,12 +405,24 @@ class PointerEffect {
       }
     }
 
+    BABYLON.VertexData.ComputeNormals(positions, indices, normals);
+    // console.log(positions.length / 3, normals);
+    // (BABYLON.VertexData as any)._ComputeSides(
+    //   BABYLON.Mesh,
+    //   positions,
+    //   indices,
+    //   normals,
+    //   uvs
+    // );
+
+    const vertexData = new BABYLON.VertexData();
     vertexData.positions = positions;
     vertexData.indices = indices;
+    vertexData.normals = normals;
+    vertexData.uvs = uvs;
     vertexData.applyToMesh(this._mesh);
 
-    this.updateDebugCanvas();
-    // console.log(positions, indices);
+    // this.updateDebugCanvas();
   }
 
   public updateDebugCanvas() {
@@ -449,8 +573,25 @@ class PointerEffect {
       filteredPoint.isDetermined = distanceDelta > MIN_SWIPE_SEG;
 
       if (lastFilteredPoint.isDetermined) {
-        this._filteredPoints.push(filteredPoint);
+        /**
+         *  NOTE: If last point is just add, and a very close new point added,
+         * the distance delta will be 0, here is to prevent this
+         */
+        if (distanceDelta > MIN_SWIPE_SEG / 10) {
+          this._filteredPoints.push(filteredPoint);
+        }
       } else {
+        // TODO: Smooth head point if it is to short
+        // const traveledPercentage = distanceDelta / MIN_SWIPE_SEG;
+
+        // if (lastDeterminedPoint && !lastDeterminedPoint.isStart) {
+        //   filteredPoint.x =
+        //     lastDeterminedPoint.x * (1 - traveledPercentage) +
+        //     filteredPoint.x * traveledPercentage;
+        //   filteredPoint.y =
+        //     lastDeterminedPoint.y * (1 - traveledPercentage) +
+        //     filteredPoint.y * traveledPercentage;
+        // }
         this._filteredPoints[
           this._filteredPoints.length - 1 /* last one */
         ] = filteredPoint;
@@ -485,28 +626,6 @@ class PointerEffect {
 
       // }
     }
-
-    /**
-     * Generate mesh points
-     */
-    // if (currentFP) {
-    //   const currentNormal = currentFP.normal as BABYLON.Vector2;
-
-    //   if (currentNormal.length() === 0) {
-    //     currentFP.meshPoints = [currentFP.x, currentFP.y, 0];
-    //   } else {
-    //     currentFP.meshPoints = [
-    //       currentFP.x + (currentNormal.x * INIT_SWIPE_WIDTH) / 2,
-    //       currentFP.y + (currentNormal.y * INIT_SWIPE_WIDTH) / 2,
-    //       0,
-    //       currentFP.x - (currentNormal.x * INIT_SWIPE_WIDTH) / 2,
-    //       currentFP.y - (currentNormal.y * INIT_SWIPE_WIDTH) / 2,
-    //       0
-    //     ];
-    //   }
-
-    //   currentFP.isMeshPointsDirty = true;
-    // }
   }
 
   private _onSessionEnd(session: PointerSession) {

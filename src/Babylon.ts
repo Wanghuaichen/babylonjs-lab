@@ -49,6 +49,13 @@ export class BabylonController {
     this._camera.upVector.set(0, -1, 0);
     this._camera.mode = BABYLON.Camera.ORTHOGRAPHIC_CAMERA;
 
+    // NOTE: show light
+    const light = new BABYLON.DirectionalLight(
+      'direct',
+      new BABYLON.Vector3(0, 1, 1),
+      this._scene
+    );
+
     this.makeAxis(100);
 
     this.setSize(canvas.clientWidth, canvas.clientHeight);
