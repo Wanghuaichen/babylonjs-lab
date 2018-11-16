@@ -85,7 +85,7 @@ class PointerEffect {
       ._babylon.scene as BABYLON.Scene);
     // this._material.diffuseColor = new BABYLON.Color3(1, 0, 0);
     this._material.diffuseTexture = new BABYLON.Texture(
-      require('@/assets/uv-test-3.png'),
+      require('@/assets/uv-test-6.png'),
       this._babylon.scene as BABYLON.Scene
     );
     this._material.backFaceCulling = true;
@@ -97,14 +97,19 @@ class PointerEffect {
       return;
     }
 
-    // if (
-    //   !this._filteredPoints.length ||
-    //   this._tailIndex === this._filteredPoints.length - 1
-    // ) {
-    //   return;
-    // }
+    // Clear old mesh
+    if (this._mesh) {
+      this._mesh.dispose();
+      this._mesh = null;
+    }
 
-    // TODO: If no point with life, return
+    // If no point with life, return
+    if (
+      !this._filteredPoints.length ||
+      this._tailIndex === this._filteredPoints.length - 1
+    ) {
+      return;
+    }
 
     const engine = this._babylon.engine as BABYLON.Engine;
     const scene = this._babylon.scene as BABYLON.Scene;
@@ -118,39 +123,9 @@ class PointerEffect {
       .clone()
       .multiply(pm)
       .invert();
-    const target = this._target as HTMLCanvasElement;
 
     const lifeDelta = deltaTime * SWIPE_SHRINK;
 
-    // console.log(this._filteredPoints.map(point => point.life));
-
-    // const points: BABYLON.Vector3[] = [];
-    // if (this._currentSession) {
-    //
-
-    //   this._filteredPoints.forEach(input => {
-    //     // transform points
-    //     const v = new BABYLON.Vector3(
-    //       (input.x * 2) / target.clientWidth - 1,
-    //       (-1 * (input.y * 2)) / target.clientHeight + 1,
-    //       0
-    //     );
-    //     const p = BABYLON.Vector3.TransformCoordinates(v, cmInverse);
-    //     p.z = 0;
-    //     points.push(p);
-    //   });
-    // }
-
-    // if (this._line) {
-    //   this._line.dispose();
-    // }
-
-    // this._line = BABYLON.Mesh.CreateLines('debugLine', points, scene);
-    // this._line.color = new BABYLON.Color3(0.5, 0.5, 0.5);
-
-    if (this._mesh) {
-      this._mesh.dispose();
-    }
     this._mesh = new BABYLON.Mesh('swipe', scene);
     this._mesh.material = this._material;
     this._mesh.renderingGroupId = 2;
@@ -160,63 +135,6 @@ class PointerEffect {
     const indices: number[] = [];
     const uvs: number[] = [];
     const normals: number[] = [];
-
-    /* for (let i = 0; i < this._filteredPoints.length; i++) {
-      const point = this._filteredPoints[i];
-
-      const meshPoints = point.meshPoints;
-      const pointCount = meshPoints.length / 3;
-
-      for (let j = 0; j < pointCount; j++) {
-        const v = new BABYLON.Vector3(
-          (meshPoints[j * 3] * 2) / target.clientWidth - 1,
-          (-1 * (meshPoints[j * 3 + 1] * 2)) / target.clientHeight + 1,
-          0
-        );
-
-        const p = BABYLON.Vector3.TransformCoordinates(v, cmInverse);
-
-        positions.push(p.x, p.y, 0);
-
-        // Format indices
-        const currentPointCount = positions.length / 3;
-        if (currentPointCount >= 3) {
-          if (currentPointCount % 2 === 0) {
-            //
-            indices.push(
-              currentPointCount - 2 - 1,
-              currentPointCount - 1,
-              currentPointCount - 1 - 1
-            );
-          } else {
-            indices.push(
-              currentPointCount - 2 - 1,
-              currentPointCount - 1 - 1,
-              currentPointCount - 1
-            );
-          }
-        }
-      }
-    }*/
-
-    // this._filteredPoints.forEach(point => {
-    //   const meshPoints = point.meshPoints;
-    //   const pointCount = meshPoints.length / 3;
-
-    //   for (let i = 0; i < pointCount; i++) {
-    //     const v = new BABYLON.Vector3(
-    //       (meshPoints[i * 3] * 2) / target.clientWidth - 1,
-    //       (-1 * (meshPoints[i * 3 + 1] * 2)) / target.clientHeight + 1,
-    //       0
-    //     );
-
-    //     const p = BABYLON.Vector3.TransformCoordinates(v, cmInverse);
-
-    //     positions.push(p.x, p.y, 0);
-    //   }
-
-    //   // indices.push(indices.length);
-    // });
 
     if (this._tailIndex <= this._filteredPoints.length - 2) {
       // At least 2 points to form a swipe effect
@@ -373,7 +291,7 @@ class PointerEffect {
             if (i % 2 !== 0) {
               uvs.push(0, 0.5, 1, 1, 1, 0);
             } else {
-              uvs.push(0, 0.5, 0, 1, 0, 0);
+              uvs.push(1, 0.5, 0, 1, 0, 0);
             }
             // vs.push(0, 0, 0, 0, 0, 0);
 
