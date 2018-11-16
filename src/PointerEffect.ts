@@ -35,6 +35,7 @@ class PointerEffect {
   private _mesh: BABYLON.Mesh | null = null;
   private _material: BABYLON.StandardMaterial | null = null;
   private _filteredPoints: any[] = [];
+  private _smoothedPoints: any[] = [];
   private _tailIndex = 0;
   private _headIndex = 0;
 
@@ -131,6 +132,7 @@ class PointerEffect {
     this._mesh.renderingGroupId = 2;
     this._mesh.visibility = 0.9999;
 
+    this._smoothedPoints = [];
     const positions: number[] = [];
     const indices: number[] = [];
     const uvs: number[] = [];
@@ -323,6 +325,7 @@ class PointerEffect {
       }
     }
 
+    // TODO: FIXME: Use 0,0,-1 as normal for each points
     BABYLON.VertexData.ComputeNormals(positions, indices, normals);
     // console.log(positions.length / 3, normals);
     // (BABYLON.VertexData as any)._ComputeSides(
@@ -548,6 +551,47 @@ class PointerEffect {
 
   private _onSessionEnd(session: PointerSession) {
     //
+  }
+
+  /**
+   * Implementation of CHAIKIN'S ALGORITHMS FOR CURVES
+   * See: http://www.idav.ucdavis.edu/education/CAGDNotes/Chaikins-Algorithm/Chaikins-Algorithm.html
+   *
+   * @param filteredPoints
+   * @param iter Number of optimize iterations
+   */
+  private _updateSmoothedPoints(filteredPoints: any[], iter: number = 2) {
+    this._smoothedPoints.length = 0;
+
+    // Make initial iteration data
+    for (let i = this._tailIndex; i < this._filteredPoints.length; i++) {
+      const point = this._filteredPoints[i];
+      this._smoothedPoints.push({
+        x: point.x,
+        y: point.y,
+        life: point.life, // We use linear interpolation for life value
+        parentIndex: i,
+        normal: null
+      });
+    }
+
+    // No need to optimize when 1 / 0 points provided
+    if (this._filteredPoints.length < 2) {
+      let lastSmoothedPoints = null;
+      while (iter > 0) {
+        iter--;
+
+        lastSmoothedPoints = this._smoothedPoints;
+        this._smoothedPoints = [];
+
+        for (let i = 0; i < lastSmoothedPoints.length - 1; i++) {
+          //
+          // this._smoothedPoints.push()
+        }
+      }
+    }
+
+    // Make line normals
   }
 }
 
