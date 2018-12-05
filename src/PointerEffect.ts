@@ -11,17 +11,25 @@ const defaultHammerRecognizerNames = [
   'tap'
 ];
 
+enum EClickAnimMode {
+  InHoldOut = 0,
+  OneShotAtPointerDown = 1
+}
+
 const MIN_SWIPE_THRESHOLD = 10;
 const MIN_SWIPE_SEG = 40;
 // const MIN_SWIPE_SEG = 100;
 const INIT_SWIPE_WIDTH = 35;
 // const INIT_SWIPE_WIDTH = 90;
 const SWIPE_SHRINK = 0.005;
-const CLICK_START_FRAMES = 4;
-const CLICK_END_FRAMES = 15;
 // const SWIPE_SHRINK = 0.00001;
 // const SWIPE_SHRINK = 0.0005;
-const CLICK_SIZE = 40;
+const CLICK_START_FRAMES = 13;
+const CLICK_END_FRAMES = 0;
+const CLICK_SIZE = 120;
+const CLICK_ANIM_FPS = 25;
+const CLICK_ANIM_SIZE = 256;
+const CLICK_ANIM_MODE: EClickAnimMode = EClickAnimMode.OneShotAtPointerDown;
 
 class PointerEffect {
   private _hammer: HammerManager | null = null;
@@ -30,6 +38,11 @@ class PointerEffect {
   private _currentSession: PointerSession | null = null;
   private _debugCanvas: HTMLCanvasElement | null = null;
   private _isDirty: boolean = false;
+
+  private _spriteCanvas: HTMLCanvasElement | null = null;
+  private _clickTexture: BABYLON.DynamicTexture | null = null;
+  private _swipeTexture: BABYLON.Texture | null = null;
+  private _clickSprite: HTMLImageElement | null = null;
 
   // runtime data
   private _isClick: boolean = false;
@@ -95,10 +108,33 @@ class PointerEffect {
     this._material = new BABYLON.StandardMaterial('simple-material', this
       ._babylon.scene as BABYLON.Scene);
     // this._material.diffuseColor = new BABYLON.Color3(1, 0, 0);
-    this._material.diffuseTexture = new BABYLON.Texture(
+    this._spriteCanvas = document.createElement('canvas');
+    this._spriteCanvas.width = CLICK_ANIM_SIZE;
+    this._spriteCanvas.height = CLICK_ANIM_SIZE;
+    // FIXME:
+    this._spriteCanvas.style.position = 'fixed';
+    this._spriteCanvas.style.right = '0px';
+    this._spriteCanvas.style.top = '0px';
+    document.body.appendChild(this._spriteCanvas);
+
+    this._swipeTexture = new BABYLON.Texture(
       require('@/assets/uv-test-7.png'),
       this._babylon.scene as BABYLON.Scene
     );
+
+    this._clickTexture = new BABYLON.DynamicTexture(
+      'item',
+      this._spriteCanvas!,
+      this._babylon.scene as BABYLON.Scene,
+      false,
+      BABYLON.Engine.TEXTURE_BILINEAR_SAMPLINGMODE
+    );
+
+    this._clickSprite = new Image();
+    this._clickSprite.src = require('@/assets/composite-2.png');
+
+    // require('@/assets/uv-test-7.png')
+
     this._material.backFaceCulling = true;
 
     // this._material.wireframe = true;
@@ -148,26 +184,71 @@ class PointerEffect {
     if (this._isClick) {
       // click effect
       let lifeDelta = 0;
-      if (!this._isSessionEnded) {
-        // touch and not up
-        lifeDelta = CLICK_START_FRAMES > 0 ? 1 / CLICK_START_FRAMES : 1;
-      } else {
-        // after touch up
-        lifeDelta = -(CLICK_START_FRAMES > 0 ? 1 / CLICK_END_FRAMES : 1);
+
+      if (CLICK_ANIM_MODE === EClickAnimMode.OneShotAtPointerDown) {
+        // LifeDelta: 1 ---> 0
+        lifeDelta = (-1 * (CLICK_ANIM_FPS / 60)) / CLICK_START_FRAMES;
+
+        const frameIndex = Math.floor(
+          (1 - this._clickLife) * CLICK_START_FRAMES
+        );
+
+        if (frameIndex <= CLICK_START_FRAMES) {
+          const context = this._spriteCanvas!.getContext('2d');
+
+          if (context && this._clickSprite!.complete) {
+            context.clearRect(0, 0, CLICK_ANIM_SIZE, CLICK_ANIM_SIZE);
+            context.drawImage(
+              this._clickSprite!,
+              frameIndex * CLICK_ANIM_SIZE,
+              0,
+              CLICK_ANIM_SIZE,
+              CLICK_ANIM_SIZE,
+              0,
+              0,
+              CLICK_ANIM_SIZE,
+              CLICK_ANIM_SIZE
+            );
+            this._clickTexture!.update(false, true);
+
+            // tslint:disable-next-line:no-console
+            console.log(frameIndex);
+          }
+        }
+
+        this._clickLife += lifeDelta;
+      } else if ((CLICK_ANIM_MODE as any) === EClickAnimMode.InHoldOut) {
+        // TODO:
+        // if (!this._isSessionEnded) {
+        //   // touch and not up
+        //   lifeDelta = CLICK_START_FRAMES > 0 ? 1 / CLICK_START_FRAMES : 1;
+        // } else {
+        //   // after touch up
+        //   lifeDelta = -(CLICK_START_FRAMES > 0 ? 1 / CLICK_END_FRAMES : 1);
+        // }
       }
 
-      this._clickLife += lifeDelta;
-      if (this._clickLife > 1) {
-        this._clickLife = 1;
-      }
-      if (this._clickLife < 1e-15) {
-        this._clickLife = 0;
-      }
+      // this._clickLife += lifeDelta;
+      // if (this._clickLife > 1) {
+      //   this._clickLife = 1;
+      // }
+      // if (this._clickLife < 1e-15) {
+      //   this._clickLife = 0;
+      // }
 
       this._mesh = new BABYLON.Mesh('click', scene);
       this._mesh.material = this._material;
+      (this._mesh
+        .material as BABYLON.SimpleMaterial).diffuseTexture = this._clickTexture!;
       this._mesh.renderingGroupId = 2;
-      (this._material as BABYLON.Material).alpha = this._clickLife;
+      (this._material as BABYLON.Material).alpha = 1;
+
+      //   console.log(
+      //     this._clickLife * 13,
+      //     lifeDelta * 13,
+      //     (this._clickLife * CLICK_START_FRAMES - 1) * 256
+      //   );
+      // }
 
       const currentPoint = this._filteredPoints[
         this._filteredPoints.length - 1
@@ -196,14 +277,14 @@ class PointerEffect {
       indices.push(0, 2, 1, 1, 2, 3);
 
       uvs.push(0, 1, 0, 0, 1, 1, 1, 0);
-
-      // console.log('click', this._isSessionEnded, this._clickLife);
     } else {
       // swipe effect
       const lifeDelta = -deltaTime * SWIPE_SHRINK;
 
       this._mesh = new BABYLON.Mesh('swipe', scene);
       this._mesh.material = this._material;
+      (this._mesh
+        .material as BABYLON.SimpleMaterial).diffuseTexture = this._swipeTexture!;
       this._mesh.renderingGroupId = 2;
       this._mesh.visibility = 0.9999;
       (this._material as BABYLON.Material).alpha = 1;
@@ -663,7 +744,7 @@ class PointerEffect {
 
   private _onSessionStart(session: PointerSession) {
     this._isClick = true;
-    this._clickLife = 0;
+    this._clickLife = 1;
     this._filteredPoints = [];
     this._tailIndex = 0;
     this._headIndex = 0;

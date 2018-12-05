@@ -37,7 +37,7 @@ export class BabylonController {
     this._engine = new BABYLON.Engine(canvas, true);
     this._scene = new BABYLON.Scene(this._engine);
 
-    this._scene.clearColor = new BABYLON.Color4(1, 1, 1, 1);
+    this._scene.clearColor = new BABYLON.Color4(0, 0, 0, 1);
     this._scene.useRightHandedSystem = true;
 
     this._camera = new BABYLON.FreeCamera(
